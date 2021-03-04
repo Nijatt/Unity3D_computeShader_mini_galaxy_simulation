@@ -306,8 +306,9 @@ MonoBehaviour:
   particle_max_pos_range: {x: 200, y: 200, z: 200}
   particle_max_vel_range: {x: 0, y: 0, z: 0}
   particle_max_force_range: {x: 0, y: 0, z: 0}
-  particle_mass: 1
-  radial_velocity_mag: 25
+  random_mass: 1
+  particle_mass: 10
+  radial_velocity_mag: 10
   particle_mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
   particle_material: {fileID: 2100000, guid: d0f93923255e86243b99177023f7907d, type: 2}
   shader: {fileID: 7200000, guid: 9cac0bb47c73e1e489a039c363d37a8d, type: 3}

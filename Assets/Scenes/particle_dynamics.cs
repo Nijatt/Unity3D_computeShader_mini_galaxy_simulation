@@ -20,9 +20,10 @@ public class particle_dynamics : MonoBehaviour
     public Vector3 particle_max_pos_range;
     public Vector3 particle_max_vel_range;
     public Vector3 particle_max_force_range;
+    public bool random_mass = false;
     public float particle_mass;
     public float radial_velocity_mag = 20f;
-    float particle_scale=1f;
+    float particle_scale = 1f;
 
     //rendering
     public Mesh particle_mesh;
@@ -41,7 +42,7 @@ public class particle_dynamics : MonoBehaviour
         public float mass { get; set; }
 
         // rotation and scale
-        public static Vector3 particle_scale = new Vector3(1f,1f,1f);
+        public static Vector3 particle_scale = new Vector3(1f, 1f, 1f);
         public static Quaternion rotation = Quaternion.identity;
 
         public Matrix4x4 matrix
@@ -69,21 +70,32 @@ public class particle_dynamics : MonoBehaviour
 
     Particle[] total_particles = new Particle[total_particle_instances];
 
-    Particle create_random_particle() {
+    Particle create_random_particle()
+    {
         // just creates particle randomly
         Particle particle_data = new Particle();
         particle_data.position_vector = new Vector3(Random.Range(-particle_max_pos_range.x, particle_max_pos_range.x), Random.Range(-particle_max_pos_range.y, particle_max_pos_range.y), Random.Range(-particle_max_pos_range.z, particle_max_pos_range.z));
         particle_data.velocity_vector = new Vector3(Random.Range(-particle_max_vel_range.x, particle_max_vel_range.x), Random.Range(-particle_max_vel_range.y, particle_max_vel_range.y), Random.Range(-particle_max_vel_range.z, particle_max_vel_range.z));
         particle_data.force_vector = new Vector3(Random.Range(-particle_max_force_range.x, particle_max_force_range.x), Random.Range(-particle_max_force_range.y, particle_max_force_range.y), Random.Range(-particle_max_force_range.z, particle_max_force_range.z));
-        particle_data.mass = Random.Range(1,particle_mass);
+        if (random_mass == true)
+        {
+            print("random_masses");
+            particle_data.mass = Random.Range(1, particle_mass);
+        }
+        else
+        {
+            particle_data.mass = Random.Range(1, particle_mass);
+        }
+
         return particle_data;
     }
 
-    
 
-    void create_random_particles() {
+
+    void create_random_particles()
+    {
         // just creates particles randomly
-        for (int j = 0; j < total_particle_instances/ sub_particle_instances; j++)
+        for (int j = 0; j < total_particle_instances / sub_particle_instances; j++)
         {
             Particle[] sub_input_data = new Particle[sub_particle_instances];
             for (int i = 0; i < sub_particle_instances; i++)
@@ -95,6 +107,19 @@ public class particle_dynamics : MonoBehaviour
     }
 
 
+    Particle[] total_particle_array = new Particle[total_particle_instances];
+
+    void create_random_particles_array()
+    {
+        // just creates particles randomly
+        for (int j = 0; j < total_particle_instances; j++)
+        {
+            total_particle_array[j] = create_random_particle();
+
+        }
+    }
+
+
     public void create_total_array_of_particles()
     {
         for (int i = 0; i < input_data.Count; i++)
@@ -102,20 +127,21 @@ public class particle_dynamics : MonoBehaviour
             for (int j = 0; j < input_data[i].Length; j++)
             {
 
-                total_particles[j+i* input_data[i].Length] = input_data[i][j];
-               
+                total_particles[j + i * input_data[i].Length] = input_data[i][j];
+
             }
         }
     }
 
-    public void divide_total_array_into_subarrays() {
+    public void divide_total_array_into_subarrays()
+    {
 
         for (int i = 0; i < input_data.Count; i++)
         {
             for (int j = 0; j < input_data[i].Length; j++)
             {
                 input_data[i][j] = total_particles[j + i * input_data[i].Length];
-                
+
             }
         }
     }
@@ -123,13 +149,13 @@ public class particle_dynamics : MonoBehaviour
     void GPU_solver()
     {
         create_total_array_of_particles();
-            ComputeBuffer buffer = new ComputeBuffer(total_particles.Length, 40);
-            buffer.SetData(total_particles);
-            int kernel = shader.FindKernel("CSMain");
-            shader.SetBuffer(kernel, "particleBuffer", buffer);
-            shader.Dispatch(kernel, total_particles.Length, 1, 1);
-            buffer.GetData(total_particles);
-            buffer.Dispose();
+        ComputeBuffer buffer = new ComputeBuffer(total_particles.Length, 40);
+        buffer.SetData(total_particles);
+        int kernel = shader.FindKernel("CSMain");
+        shader.SetBuffer(kernel, "particleBuffer", buffer);
+        shader.Dispatch(kernel, total_particles.Length, 1, 1);
+        buffer.GetData(total_particles);
+        buffer.Dispose();
         divide_total_array_into_subarrays();
     }
 
@@ -151,7 +177,8 @@ public class particle_dynamics : MonoBehaviour
 
 
 
-    Vector3 vector_matrix_calculation_3x3(Vector3 matrix, float[,] rotation_matrix) {
+    Vector3 vector_matrix_calculation_3x3(Vector3 matrix, float[,] rotation_matrix)
+    {
 
         Vector3 final_calculation;
         float[] inital_vector = new float[3] { matrix.x, matrix.y, matrix.z };
@@ -159,10 +186,10 @@ public class particle_dynamics : MonoBehaviour
 
         for (int row = 0; row < 3; row++)
         {
-            for(int col = 0; col < 3; col++)
+            for (int col = 0; col < 3; col++)
             {
                 rotated_vector[row] += inital_vector[row] * rotation_matrix[row, col];
-                
+
             }
         }
 
@@ -178,29 +205,30 @@ public class particle_dynamics : MonoBehaviour
     void add_radial_velocity_by_rotation_matrix()
     {
         Vector3 center = new Vector3(0f, 0f, 0f);
-        
+
         for (int j = 0; j < total_particle_instances / sub_particle_instances; j++)
         {
             for (int i = 0; i < sub_particle_instances; i++)
             {
                 Vector3 direction = input_data[j][i].position_vector - center;
-             
+
                 Vector3 normalized_direction_vector_with_mag = direction.normalized * radial_velocity_mag;
                 Vector3 radial_velocities = vector_matrix_calculation_3x3(normalized_direction_vector_with_mag, rotation_matrix_z);
-                
+
                 radial_velocities.z = 0; //not necesarry
                 //print("ada");
                 //  print(input_data[j][i].position_vector);
                 //  print(direction.normalized);
 
                 input_data[j][i].velocity_vector = radial_velocities;
-               // print(input_data[j][i].velocity_vector);
+                // print(input_data[j][i].velocity_vector);
             }
-            
+
         }
     }
 
-    void add_radial_velocity_by_cross_product() {
+    void add_radial_velocity_by_cross_product()
+    {
 
         Vector3 z_axis = new Vector3(0, 0, 1);
 
@@ -215,12 +243,9 @@ public class particle_dynamics : MonoBehaviour
                 Vector3 radial_velocities = Vector3.Cross(z_axis, normalized_direction_vector_with_mag);
 
                 radial_velocities.z = 0; //not necesarry
-                //print("ada");
-                //  print(input_data[j][i].position_vector);
-                //  print(direction.normalized);
+
 
                 input_data[j][i].velocity_vector = radial_velocities;
-                // print(input_data[j][i].velocity_vector);
             }
 
         }
@@ -257,7 +282,7 @@ public class particle_dynamics : MonoBehaviour
     void Update()
     {
         GPU_solver();
-       RenderBatches();
+        RenderBatches();
     }
 
 
